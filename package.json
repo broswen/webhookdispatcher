@@ -5,11 +5,21 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "start": "wrangler dev"
+    "start": "wrangler dev",
+    "test": "npx vitest",
+    "lint": "npx eslint ."
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240208.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.56.0",
     "typescript": "^5.0.4",
+    "vitest": "^1.2.2",
+    "vitest-environment-miniflare": "^2.14.2",
     "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "itty-router": "^4.0.27"
   }
 }
