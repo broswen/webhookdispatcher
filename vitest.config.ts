@@ -4,6 +4,9 @@ export default defineConfig({
     test: {
         environment: "miniflare",
         environmentOptions: {
+					durableObjects: {
+						"WEBHOOK": "Webhook"
+					}
         },
     },
 });

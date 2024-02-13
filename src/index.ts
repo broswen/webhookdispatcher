@@ -1,78 +1,143 @@
-/**
- * Welcome to Cloudflare Workers! This is your first Durable Objects application.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your Durable Object in action
- * - Run `npm run deploy` to publish your application
- *
- * Learn more at https://developers.cloudflare.com/durable-objects
- */
+import { error, json, Router, text } from 'itty-router';
+import {
+	createWebhookHandler,
+	getWebhookHandler,
+	validateCreateWebhookRequest,
+	validateGetWebhookRequest
+} from './handlers';
+import { CreateWebhookSchema, Env } from './types';
+import { z } from 'zod';
+import { base64ToArrayBuffer, buildRequest } from './helpers';
 
-/**
- * Associate bindings declared in wrangler.toml with the TypeScript type system
- */
-export interface Env {
-	// Example binding to KV. Learn more at https://developers.cloudflare.com/workers/runtime-apis/kv/
-	// MY_KV_NAMESPACE: KVNamespace;
-	//
-	// Example binding to Durable Object. Learn more at https://developers.cloudflare.com/workers/runtime-apis/durable-objects/
-	MY_DURABLE_OBJECT: DurableObjectNamespace;
-	//
-	// Example binding to R2. Learn more at https://developers.cloudflare.com/workers/runtime-apis/r2/
-	// MY_BUCKET: R2Bucket;
-	//
-	// Example binding to a Service. Learn more at https://developers.cloudflare.com/workers/runtime-apis/service-bindings/
-	// MY_SERVICE: Fetcher;
-	//
-	// Example binding to a Queue. Learn more at https://developers.cloudflare.com/queues/javascript-apis/
-	// MY_QUEUE: Queue;
+const ONE_MONTH = 60*60*24*30;
+
+export interface DispatcherState {
+	id: string
+	target: string
+	payload: string
+	succeeded: boolean
+	provisionedAt: string
+	attempts: Attempt[]
 }
 
-/** A Durable Object's behavior is defined in an exported Javascript class */
-export class MyDurableObject {
-	/**
-	 * The constructor is invoked once upon creation of the Durable Object, i.e. the first call to
-	 * 	`DurableObjectStub::get` for a given identifier
-	 *
-	 * @param state - The interface for interacting with Durable Object state
-	 * @param env - The interface to reference bindings declared in wrangler.toml
-	 */
-	constructor(state: DurableObjectState, env: Env) {}
+export interface Attempt {
+	timestamp: string
+	status: number
+	message: string
+}
 
-	/**
-	 * The Durable Object fetch handler will be invoked when a Durable Object instance receives a
-	 * 	request from a Worker via an associated stub
-	 *
-	 * @param request - The request submitted to a Durable Object instance from a Worker
-	 * @returns The response to be sent back to the Worker
-	 */
+export class Webhook {
+	storage: DurableObjectStorage
+	env: Env
+	state: DispatcherState | undefined;
+	constructor(state: DurableObjectState, env: Env) {
+		this.storage = state.storage;
+		this.env = env;
+		// load existing dispatcher state if it exists
+		state.blockConcurrencyWhile(async () => {
+			this.state = await this.storage.get<DispatcherState>("state");
+		})
+}
 	async fetch(request: Request): Promise<Response> {
-		return new Response('Hello World');
+		if (request.method === "GET") {
+			if (!this.state) return error(404, "not found");
+			return json(this.state);
+		} else if (request.method === "POST") {
+			// if already created, return existing state
+			if (this.state) return json(this.state);
+
+			// parse request
+			const createWebhookRequest = await request.json<z.infer<typeof CreateWebhookSchema>>();
+
+			// initialize dispatcher state
+			this.state = {
+				id: createWebhookRequest.id,
+				target: createWebhookRequest.target,
+				payload: createWebhookRequest.payload,
+				attempts: [],
+				provisionedAt: new Date().toISOString(),
+				succeeded: false
+			};
+
+			// save dispatcher state
+			await this.storage.put("state", this.state);
+			// schedule first attempt, now!
+			await this.storage.setAlarm(new Date());
+			return json(this.state);
+		} else {
+			return error(405, "not allowed");
+		}
+	}
+
+	async alarm() {
+		if (this.state) {
+			console.log("running alarm", {state: this.state});
+			if (this.state.succeeded) {
+				// if run after succeeded, delete all
+				console.log("cleanup")
+				await this.storage.deleteAll()
+				return
+			}
+
+			const attempt: Attempt = {
+				timestamp: new Date().toISOString(),
+				status: 0,
+				message: ""
+			};
+			try {
+
+				const req = new Request(this.state?.target, {
+					method: "POST",
+					body: base64ToArrayBuffer(this.state.payload)
+				});
+				const res = await fetch(req);
+
+				// set attempt details
+				attempt.status = res.status;
+				attempt.message = res.statusText;
+
+				// if response wasn't ok, throw error to retry alarm
+				if (res.status < 200 || res.status >= 300) {
+					throw new Error(`${res.status}: ${res.statusText}`);
+				} else {
+					// set attempt message to success
+					attempt.message = "success"
+					this.state.succeeded = true
+					// set alarm to delete 1 month later
+					await this.storage.setAlarm(new Date().getTime() + ONE_MONTH)
+				}
+			} catch (e) {
+				// set attempt message to error message
+				attempt.message = String(e);
+				// throw unhandled exception so the runtime retries with backoff
+				throw e;
+			} finally {
+				// save dispatcher state
+				this.state.attempts.push(attempt)
+				await this.storage.put("state", this.state);
+			}
+		} else {
+			console.log("skipping alarm invocation as state is undefined")
+		}
 	}
 }
 
+const router = Router();
+
+router
+	.get("/_health", () => text("ok"))
+	.post("/api/webhooks", validateCreateWebhookRequest, createWebhookHandler)
+	.get("/api/webhooks/:id", validateGetWebhookRequest, getWebhookHandler)
+	.all("*", () => error(404, "not found"))
+
 export default {
-	/**
-	 * This is the standard fetch handler for a Cloudflare Worker
-	 *
-	 * @param request - The request submitted to the Worker from the client
-	 * @param env - The interface to reference bindings declared in wrangler.toml
-	 * @param ctx - The execution context of the Worker
-	 * @returns The response to be sent back to the client
-	 */
+
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		// We will create a `DurableObjectId` using the pathname from the Worker request
-		// This id refers to a unique instance of our 'MyDurableObject' class above
-		let id: DurableObjectId = env.MY_DURABLE_OBJECT.idFromName(new URL(request.url).pathname);
-
-		// This stub creates a communication channel with the Durable Object instance
-		// The Durable Object constructor will be invoked upon the first call for a given id
-		let stub: DurableObjectStub = env.MY_DURABLE_OBJECT.get(id);
-
-		// We call `fetch()` on the stub to send a request to the Durable Object instance
-		// The Durable Object instance will invoke its fetch handler to handle the request
-		let response = await stub.fetch(request);
-
-		return response;
+		const incomingRequest = buildRequest(request, env, ctx);
+		return router.handle(incomingRequest, env, ctx)
+			.catch((e) => {
+				console.log(e)
+				return error(500, "internal server error")
+			});
 	},
 };
