@@ -10,12 +10,21 @@ import { z } from 'zod';
 import { base64ToArrayBuffer, buildRequest } from './helpers';
 
 const ONE_MONTH = 60*60*24*30;
+const INITIAL_BACKOFF = 10;
+const MAX_ATTEMPTS = 5;
+const ATTEMPT_TIMEOUT = 10000;
+enum DispatcherStatus {
+	UNKNOWN = "UNKNOWN",
+	PENDING = "PENDING",
+	FAILED = "FAILED",
+	SUCCEEDED = "SUCCEEDED",
+}
 
 export interface DispatcherState {
 	id: string
 	target: string
 	payload: string
-	succeeded: boolean
+	status: DispatcherStatus
 	provisionedAt: string
 	attempts: Attempt[]
 }
@@ -56,7 +65,7 @@ export class Webhook {
 				payload: createWebhookRequest.payload,
 				attempts: [],
 				provisionedAt: new Date().toISOString(),
-				succeeded: false
+				status: DispatcherStatus.PENDING
 			};
 
 			// save dispatcher state
@@ -72,7 +81,7 @@ export class Webhook {
 	async alarm() {
 		if (this.state) {
 			console.log("running alarm", {state: this.state});
-			if (this.state.succeeded) {
+			if (this.state.status === DispatcherStatus.SUCCEEDED || this.state.status === DispatcherStatus.FAILED) {
 				// if run after succeeded, delete all
 				console.log("cleanup")
 				await this.storage.deleteAll()
@@ -85,12 +94,11 @@ export class Webhook {
 				message: ""
 			};
 			try {
-
 				const req = new Request(this.state?.target, {
 					method: "POST",
 					body: base64ToArrayBuffer(this.state.payload)
 				});
-				const res = await fetch(req);
+				const res = await fetch(req, {signal: AbortSignal.timeout(ATTEMPT_TIMEOUT)});
 
 				// set attempt details
 				attempt.status = res.status;
@@ -101,23 +109,37 @@ export class Webhook {
 					throw new Error(`${res.status}: ${res.statusText}`);
 				} else {
 					// set attempt message to success
-					attempt.message = "success"
-					this.state.succeeded = true
+					attempt.message = "success";
+					this.state.status = DispatcherStatus.SUCCEEDED;
 					// set alarm to delete 1 month later
-					await this.storage.setAlarm(new Date().getTime() + ONE_MONTH)
+					await this.storage.setAlarm(new Date().getTime() + ONE_MONTH);
 				}
 			} catch (e) {
 				// set attempt message to error message
 				attempt.message = String(e);
 				// throw unhandled exception so the runtime retries with backoff
-				throw e;
 			} finally {
+				this.state.attempts.push(attempt);
+				// if no attempts left and still no succeeded, set failed and schedule for cleanup
+
+				if (this.state.status === DispatcherStatus.SUCCEEDED) {
+					// if succeeded, schedule cleanup
+					await this.storage.setAlarm(new Date().getTime() + ONE_MONTH);
+				} else if (this.state.status === DispatcherStatus.PENDING) {
+					// if pending and hit max attempts, mark failed, schedule cleanup
+					if (this.state.attempts.length >= MAX_ATTEMPTS) {
+						this.state.status = DispatcherStatus.FAILED;
+						await this.storage.setAlarm(new Date().getTime() + ONE_MONTH);
+					} else {
+						// if not hit max attempts, schedule for backoff ^ attempts millis in the future
+						await this.storage.setAlarm(new Date().getTime() + Math.pow(INITIAL_BACKOFF, this.state.attempts.length));
+					}
+				}
 				// save dispatcher state
-				this.state.attempts.push(attempt)
 				await this.storage.put("state", this.state);
 			}
 		} else {
-			console.log("skipping alarm invocation as state is undefined")
+			console.log("skipping alarm invocation as state is undefined");
 		}
 	}
 }
