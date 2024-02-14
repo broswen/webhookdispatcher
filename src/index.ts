@@ -9,7 +9,7 @@ import { CreateWebhookSchema, Env } from './types';
 import { z } from 'zod';
 import { base64ToArrayBuffer, buildRequest } from './helpers';
 
-const ONE_MONTH = 60*60*24*30;
+const ONE_MONTH = 1000*60*60*24*30;
 const INITIAL_BACKOFF = 10;
 const MAX_ATTEMPTS = 5;
 const ATTEMPT_TIMEOUT = 10000;
