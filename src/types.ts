@@ -4,6 +4,7 @@ import {IRequestStrict} from 'itty-router';
 export interface Env {
 	WEBHOOK: DurableObjectNamespace;
 	VERSION: string;
+	ANALYTICS: AnalyticsEngineDataset;
 }
 
 export type WorkerRequest = {

@@ -10,6 +10,10 @@ custom_domain = true
 [vars]
 VERSION = "local"
 
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
+dataset = "webhookdispatcher"
+
 [[durable_objects.bindings]]
 name = "WEBHOOK"
 class_name = "Webhook"
