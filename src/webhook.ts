@@ -1,8 +1,9 @@
 import { CreateWebhookSchema, Env } from './types';
 import { z } from 'zod';
-import { base64ToArrayBuffer, buildRequest } from './helpers';
+import { base64ToArrayBuffer } from './helpers';
 import { error, json } from 'itty-router';
 import { Analytics } from './analytics';
+import * as jose from 'jose';
 
 const ONE_MONTH = 1000*60*60*24*30;
 const INITIAL_BACKOFF = 10;
@@ -113,8 +114,22 @@ export class Webhook {
 					message: ""
 				};
 				try {
+					const privateKey = await jose.importPKCS8(atob(this.env.PRIVATE_KEY), this.env.PRIVATE_KEY_ALG);
+					const token = await new jose.SignJWT({
+						id: this.state.id,
+					})
+						.setExpirationTime(30)
+						.setIssuer("webhookdispatcher")
+						.setProtectedHeader({
+							alg: this.env.PRIVATE_KEY_ALG,
+						})
+						.sign(privateKey);
+
 					const req = new Request(this.state?.target, {
 						method: "POST",
+						headers: {
+							Authorization: `Bearer ${token}`,
+						},
 						body: base64ToArrayBuffer(this.state.payload)
 					});
 					const res = await fetch(req, { signal: AbortSignal.timeout(ATTEMPT_TIMEOUT) });

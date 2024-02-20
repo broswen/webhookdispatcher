@@ -9,6 +9,9 @@ custom_domain = true
 
 [vars]
 VERSION = "local"
+PRIVATE_KEY_ALG = "RS256"
+# set using wrangler
+# PRIVATE_KEY = ""
 
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"

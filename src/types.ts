@@ -5,6 +5,8 @@ export interface Env {
 	WEBHOOK: DurableObjectNamespace;
 	VERSION: string;
 	ANALYTICS: AnalyticsEngineDataset;
+	PRIVATE_KEY: string;
+	PRIVATE_KEY_ALG: string;
 }
 
 export type WorkerRequest = {

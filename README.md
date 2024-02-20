@@ -34,7 +34,9 @@ Receives webhook requests from [WebhookRelay](https://github.com/broswen/webhook
 ```
 
 ### TODO
-- [ ] include a signed token with expiration and webhook id in the payload to allow authentication
-  - expose public key for token verification by receiving clients
+- [x] include a signed token with expiration and webhook id in the payload to allow authentication
+  - [ ] expose public key for token verification by receiving clients
+  - [ ] handle key rotations nicely, expose the previous public key
+  - [ ] create a utility to generate/encode new secrets
 - [ ] send expiration timestamp on webhooks to prevent replay attacks
 - [ ] set up vitest testing
