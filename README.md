@@ -7,6 +7,8 @@ The Durable Object manages retries with exponential backoff and tracks the dispa
 
 ![diagram](diagram.png)
 
+Receives webhook requests from [WebhookRelay](https://github.com/broswen/webhookrelay) provisioner.
+
 ### Internal Dispatcher State
 
 ```json
@@ -17,7 +19,7 @@ The Durable Object manages retries with exponential backoff and tracks the dispa
 	"attempts": [
 		{
 			"timestamp": "2024-02-14T20:28:08.480Z",
-			"status": 200,
+			"status": 500,
 			"message": "Error: 500: Internal Server Error"
 		},
 		{
@@ -32,6 +34,7 @@ The Durable Object manages retries with exponential backoff and tracks the dispa
 ```
 
 ### TODO
+- [ ] include a signed token with expiration and webhook id in the payload to allow authentication
+  - expose public key for token verification by receiving clients
+- [ ] send expiration timestamp on webhooks to prevent replay attacks
 - [ ] set up vitest testing
-- [ ] define workers analytics engine
-  - define doubles, blobs to track
