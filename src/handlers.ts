@@ -1,6 +1,6 @@
 import { CreateWebhookRequest, CreateWebhookSchema, GetWebhookRequest, WorkerRequest } from './types';
-import { arrayBufferToBase64, base64ToArrayBuffer, formatZodError } from './helpers';
-import { error, IRequestStrict, json } from 'itty-router';
+import { arrayBufferToBase64, formatZodError } from './helpers';
+import { error, json } from 'itty-router';
 import { z } from 'zod';
 
 
@@ -52,7 +52,7 @@ export async function createWebhookHandler(request: CreateWebhookRequest): Promi
 export async function keysHandler(request: WorkerRequest): Promise<Response> {
 	const publicKey = await crypto.subtle.importKey(
 		"jwk",
-		JSON.parse(request.env.PUBLIC_KEY),
+		JSON.parse(request.env.PUBLIC_KEY) as JsonWebKey,
 		{
 		name: "RSASSA-PKCS1-v1_5",
 			hash: "SHA-256"

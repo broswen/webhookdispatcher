@@ -44,8 +44,8 @@ export class Webhook {
 		})
 	}
 	async fetch(request: Request): Promise<Response> {
-		let analytics = new Analytics(this.env);
-		let url = new URL(request.url)
+		const analytics = new Analytics(this.env);
+		const url = new URL(request.url)
 		try {
 			analytics.method = request.method;
 			analytics.path = url.pathname;
@@ -95,7 +95,7 @@ export class Webhook {
 	}
 
 	async alarm() {
-		let analytics = new Analytics(this.env);
+		const analytics = new Analytics(this.env);
 		analytics.event = "alarm";
 		try {
 			if (this.state) {
@@ -116,7 +116,7 @@ export class Webhook {
 				try {
 					const privateKey = await crypto.subtle.importKey(
 						"jwk",
-						JSON.parse(this.env.PRIVATE_KEY),
+						JSON.parse(this.env.PRIVATE_KEY) as JsonWebKey,
 						{
 							name: "RSASSA-PKCS1-v1_5",
 							hash: "SHA-256"

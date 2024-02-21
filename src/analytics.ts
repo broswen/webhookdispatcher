@@ -10,7 +10,7 @@ export class Analytics {
 	constructor(readonly env: Env) {
 	}
 
-	async send() {
+	send() {
 		this.env.ANALYTICS.writeDataPoint({
 			// THIS ORDER MUST NOT CHANGE, only append new metrics to the end of the lists
 			indexes: [this.webhookId],

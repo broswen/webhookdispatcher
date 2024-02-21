@@ -1,4 +1,4 @@
-import { error, json, Router, text } from 'itty-router';
+import { error, Router, text } from 'itty-router';
 import {
 	createWebhookHandler,
 	getWebhookHandler, keysHandler,

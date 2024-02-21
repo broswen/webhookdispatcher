@@ -7,8 +7,7 @@
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx vitest --dir src",
-    "lint": "npx eslint .",
-		"generate-keypair": "ts-node utils/generate_keys.ts"
+    "lint": "npx eslint ."
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240208.0",
