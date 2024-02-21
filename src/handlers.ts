@@ -1,5 +1,5 @@
 import { CreateWebhookRequest, CreateWebhookSchema, GetWebhookRequest, WorkerRequest } from './types';
-import { formatZodError } from './helpers';
+import { arrayBufferToBase64, base64ToArrayBuffer, formatZodError } from './helpers';
 import { error, IRequestStrict, json } from 'itty-router';
 import { z } from 'zod';
 
@@ -60,6 +60,17 @@ export async function keysHandler(request: WorkerRequest): Promise<Response> {
 		true,
 		["verify"]
 	);
-	const exported = await crypto.subtle.exportKey("jwk", publicKey)
-	return json({publicKey: exported})
+
+	const exportedSpki = await crypto.subtle.exportKey("spki", publicKey) as ArrayBuffer ;
+	let data = arrayBufferToBase64(exportedSpki);
+	let finalPem = "-----BEGIN PUBLIC KEY-----\n"
+	while (data.length > 0) {
+		finalPem += data.substring(0, 64) + "\n"
+		data = data.substring(64)
+	}
+	finalPem += "-----END PUBLIC KEY-----"
+
+	const exportedJwk = await crypto.subtle.exportKey("jwk", publicKey);
+
+	return json({jwk: exportedJwk, pem: finalPem})
 }
