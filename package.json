@@ -7,13 +7,15 @@
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx vitest --dir src",
-    "lint": "npx eslint ."
+    "lint": "npx eslint .",
+		"generate-keypair": "ts-node utils/generate_keys.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240208.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.56.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.0.4",
     "vitest": "^1.2.2",
     "vitest-environment-miniflare": "^2.14.2",

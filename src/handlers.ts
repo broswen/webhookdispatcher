@@ -1,6 +1,6 @@
-import { CreateWebhookRequest, CreateWebhookSchema, GetWebhookRequest } from './types';
+import { CreateWebhookRequest, CreateWebhookSchema, GetWebhookRequest, WorkerRequest } from './types';
 import { formatZodError } from './helpers';
-import { error } from 'itty-router';
+import { error, IRequestStrict, json } from 'itty-router';
 import { z } from 'zod';
 
 
@@ -46,4 +46,20 @@ export async function createWebhookHandler(request: CreateWebhookRequest): Promi
 	const id = request.env.WEBHOOK.idFromName(request.parsedBody.id);
 	const obj = request.env.WEBHOOK.get(id);
 	return obj.fetch(request, {body: JSON.stringify(request.parsedBody)});
+}
+
+
+export async function keysHandler(request: WorkerRequest): Promise<Response> {
+	const publicKey = await crypto.subtle.importKey(
+		"jwk",
+		JSON.parse(request.env.PUBLIC_KEY),
+		{
+		name: "RSASSA-PKCS1-v1_5",
+			hash: "SHA-256"
+		},
+		true,
+		["verify"]
+	);
+	const exported = await crypto.subtle.exportKey("jwk", publicKey)
+	return json({publicKey: exported})
 }

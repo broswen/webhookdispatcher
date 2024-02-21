@@ -6,7 +6,7 @@ export interface Env {
 	VERSION: string;
 	ANALYTICS: AnalyticsEngineDataset;
 	PRIVATE_KEY: string;
-	PRIVATE_KEY_ALG: string;
+	PUBLIC_KEY: string;
 }
 
 export type WorkerRequest = {

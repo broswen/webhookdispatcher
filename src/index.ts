@@ -1,7 +1,7 @@
 import { error, json, Router, text } from 'itty-router';
 import {
 	createWebhookHandler,
-	getWebhookHandler,
+	getWebhookHandler, keysHandler,
 	validateCreateWebhookRequest,
 	validateGetWebhookRequest
 } from './handlers';
@@ -15,6 +15,7 @@ router
 	.get("/_health", () => text("ok"))
 	.post("/api/webhooks", validateCreateWebhookRequest, createWebhookHandler)
 	.get("/api/webhooks/:id", validateGetWebhookRequest, getWebhookHandler)
+	.get("/api/keys", keysHandler)
 	.all("*", () => error(404, "not found"))
 
 export default {

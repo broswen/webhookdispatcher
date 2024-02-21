@@ -114,14 +114,23 @@ export class Webhook {
 					message: ""
 				};
 				try {
-					const privateKey = await jose.importPKCS8(atob(this.env.PRIVATE_KEY), this.env.PRIVATE_KEY_ALG);
+					const privateKey = await crypto.subtle.importKey(
+						"jwk",
+						JSON.parse(this.env.PRIVATE_KEY),
+						{
+							name: "RSASSA-PKCS1-v1_5",
+							hash: "SHA-256"
+						},
+						true,
+						["sign"]
+					);
 					const token = await new jose.SignJWT({
 						id: this.state.id,
 					})
 						.setExpirationTime(30)
 						.setIssuer("webhookdispatcher")
 						.setProtectedHeader({
-							alg: this.env.PRIVATE_KEY_ALG,
+							alg: "RS256"
 						})
 						.sign(privateKey);
 

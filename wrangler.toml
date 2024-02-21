@@ -9,9 +9,9 @@ custom_domain = true
 
 [vars]
 VERSION = "local"
-PRIVATE_KEY_ALG = "RS256"
 # set using wrangler
-# PRIVATE_KEY = ""
+#PRIVATE_KEY = ''
+PUBLIC_KEY = '{"key_ops":["verify"],"ext":true,"kty":"RSA","n":"5-Ro4w0mYR1j-WG3wwCDYx0dnov9urDSltxnnub7KEQTYEYw0KAa82RA87kQ7n1Xtahx-w4JIcY5unlUnA3zJZuBBCrEsVaNOuwBoVa6oK0FnIKRBo-jdsVF_0m_tUiHym46gSHknlLOK8z7pDfSkpX2vm_LQxPmpSibQrBtQjFjgVxuAuZqbd9BSXtt9TEV5lEJKgYuSpK7PDUCEK_dn80l8Gc0yyXwWn9fjjdvAZuqNUUExepzNdpbQkk7lqT63LZBljlfHu9YRLh1wtr4Dw8_8qCtsKqX6S42Lg_y1jksL9qxapJmUyd4mO_04-nwBG7OPn0EXzWAUrRKuYfBPw","e":"AQAB","alg":"RS256"}'
 
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
